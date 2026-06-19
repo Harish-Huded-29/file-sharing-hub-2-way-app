@@ -1,0 +1,14 @@
+{
+	"appId": "com.filesharinghub.app",
+	"appName": "File Sharing Hub",
+	"webDir": "www",
+	"bundledWebRuntime": false,
+	"android": {
+		"allowMixedContent": true,
+		"captureInput": true,
+		"webContentsDebuggingEnabled": true
+	},
+	"server": {
+		"androidScheme": "https"
+	}
+}

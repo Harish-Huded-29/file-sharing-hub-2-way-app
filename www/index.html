@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>File Sharing Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-text">
+                <h1>File Sharing Hub</h1>
+                <div class="developer-credit-header">
+                    By <span class="developer-name">Immortal</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Button (Directly below Header) -->
+        <div class="help-section">
+            <button onclick="openHelpModal()" class="btn-help">❓ How to Use</button>
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-card">
+            <div class="status-indicator" id="statusIndicator">
+                <div class="status-dot stopped"></div>
+                <span id="statusText">Server Stopped</span>
+            </div>
+            <div id="serverInfo" class="server-info hidden">
+                <div class="url-section">
+                    <p><strong>📍 Access URL:</strong></p>
+                    <p class="url" id="wifiUrl">http://192.168.x.x:8080</p>
+                    <div class="btn-group-row">
+                        <button onclick="copyUrl('wifiUrl')" class="copy-btn-small">📋 Copy</button>
+                        <button onclick="openUrl('wifiUrl')" class="open-btn-small">🌐 Open</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toggle 2-Way Transfer (Between Status Card and Select Files) -->
+        <div class="card toggle-card">
+            <div class="toggle-container">
+                <div class="toggle-details">
+                    <h3>🔒 Disable Two-way Transfer</h3>
+                    <p class="card-description">Prevent connected clients from uploading files</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="disableTwoWayToggle" onchange="toggleTwoWayTransfer()">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- File Selection -->
+        <div class="card">
+            <h2>📁 Select Files</h2>
+            <p class="card-description">Choose files to share with other devices</p>
+            <input type="file" id="folderInput" multiple style="display:none">
+            <button onclick="selectFolder()" class="btn btn-secondary">📂 Choose Files</button>
+            <p id="folderPath" class="folder-path">No files selected</p>
+            <div id="fileList" class="file-list"></div>
+        </div>
+
+        <!-- Control Buttons -->
+        <button id="startBtn" onclick="startSharing()" class="btn btn-primary">▶️ Start Server</button>
+        <button id="stopBtn" onclick="stopSharing()" class="btn btn-danger hidden">⏹️ Stop Server</button>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>❓ How to Use (Host)</h2>
+                <button class="modal-close-icon" onclick="closeHelpModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="guide-steps">
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">1</span>
+                        <div class="step-content">
+                            <h4>Connect Network</h4>
+                            <p>Connect your phone to a <span class="highlight-cyan">Wi-Fi Router</span> or turn on your <span class="highlight-purple">Mobile Hotspot</span>. No internet is required.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">2</span>
+                        <div class="step-content">
+                            <h4>Choose Files</h4>
+                            <p>Tap <span class="highlight-purple">📂 Choose Files</span> to select the files you want to share with others.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">3</span>
+                        <div class="step-content">
+                            <h4>Start Server</h4>
+                            <p>Press <span class="highlight-green">▶️ Start Server</span> to launch the server. It will display a unique <span class="highlight-cyan">Access URL</span>.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">4</span>
+                        <div class="step-content">
+                            <h4>Client Access</h4>
+                            <p>Have users open the <span class="highlight-cyan">Access URL</span> on their browser. They must be on the <span class="highlight-purple">same local network</span>.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step border-highlight">
+                        <span class="step-num bg-red">🔒</span>
+                        <div class="step-content">
+                            <h4>Secure Cache Cleanup</h4>
+                            <p>For your <span class="highlight-red">storage safety</span>, all uploaded and shared data is kept in temporary cache. As soon as you stop the server or swipe the app away, <span class="highlight-red">all files are permanently deleted</span> from your device. No memory leaks!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-close" onclick="closeHelpModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/capacitor.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>File Sharing Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="icon.png" alt="Icon" class="app-icon" onerror="this.style.display='none'">
+            <div class="header-text">
+                <h1>File Sharing Hub</h1>
+                <div class="developer-credit-header">
+                    By <span class="developer-name">Immortal</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-card">
+            <div class="status-indicator" id="statusIndicator">
+                <div class="status-dot stopped"></div>
+                <span id="statusText">Server Stopped</span>
+            </div>
+            <div id="serverInfo" class="server-info hidden">
+                <div class="url-section">
+                    <p><strong>📍 Access URL:</strong></p>
+                    <p class="url" id="wifiUrl">http://192.168.x.x:9090</p>
+                    <div class="btn-group-row">
+                        <button onclick="copyUrl('wifiUrl')" class="copy-btn-small">📋 Copy</button>
+                        <button onclick="openUrl('wifiUrl')" class="open-btn-small">🌐 Open</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Selection -->
+        <div class="card">
+            <h2>📁 Select Files</h2>
+            <p class="card-description">Choose files to share with other devices</p>
+            <input type="file" id="folderInput" multiple style="display:none">
+            <button onclick="selectFolder()" class="btn btn-secondary">📂 Choose Files</button>
+            <p id="folderPath" class="folder-path">No files selected</p>
+            <div id="fileList" class="file-list"></div>
+        </div>
+
+        <!-- Control Buttons -->
+        <button id="startBtn" onclick="startSharing()" class="btn btn-primary">▶️ Start Server</button>
+        <button id="stopBtn" onclick="stopSharing()" class="btn btn-danger hidden">⏹️ Stop Server</button>
+    </div>
+
+    <script src="js/capacitor.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
