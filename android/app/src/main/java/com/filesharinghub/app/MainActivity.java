@@ -58,13 +58,50 @@ public class MainActivity extends BridgeActivity {
     public class AndroidBridge {
         
         @JavascriptInterface
-        public String startServer(int port) {
+        public String getDeviceName() {
             try {
-                return serverPlugin.startServerSync(port);
+                String name = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N_MR1) {
+                    name = android.provider.Settings.Global.getString(getContentResolver(), android.provider.Settings.Global.DEVICE_NAME);
+                }
+                if (name == null || name.trim().isEmpty()) {
+                    name = android.provider.Settings.Secure.getString(getContentResolver(), "bluetooth_name");
+                }
+                if (name == null || name.trim().isEmpty()) {
+                    try {
+                        android.bluetooth.BluetoothAdapter adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+                        if (adapter != null) {
+                            name = adapter.getName();
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (name == null || name.trim().isEmpty()) {
+                    name = android.os.Build.MODEL;
+                }
+                if (name == null || name.trim().isEmpty()) {
+                    name = "device";
+                }
+                name = name.trim().replaceAll("\\s+", "-").replaceAll("[^a-zA-Z0-9-]", "").toLowerCase(java.util.Locale.US);
+                if (name.isEmpty()) name = "device";
+                return name;
+            } catch (Exception e) {
+                return "device";
+            }
+        }
+
+        @JavascriptInterface
+        public String startServer(int port, String hostname) {
+            try {
+                return serverPlugin.startServerSync(port, hostname);
             } catch (Exception e) {
                 Log.e(TAG, "❌ startServer error", e);
                 return "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}";
             }
+        }
+
+        @JavascriptInterface
+        public String startServer(int port) {
+            return startServer(port, "filesharehub");
         }
         
         @JavascriptInterface
@@ -318,5 +355,23 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception e) {
             Log.e(TAG, "❌ notifyFilePicked error", e);
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                webView.evaluateJavascript("javascript:(function(){ if(window.handleAppBack && window.handleAppBack()){ return 'handled'; } return 'exit'; })()", value -> {
+                    if (value != null && value.contains("handled")) {
+                        // Modal was closed, do not exit
+                        return;
+                    }
+                    runOnUiThread(MainActivity.super::onBackPressed);
+                });
+                return;
+            }
+        } catch (Exception ignored) {}
+        super.onBackPressed();
     }
 }

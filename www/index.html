@@ -21,9 +21,10 @@
             </div>
         </div>
 
-        <!-- Help Button (Directly below Header) -->
+        <!-- Action Buttons (Directly below Header) -->
         <div class="help-section">
             <button onclick="openHelpModal()" class="btn-help">❓ How to Use</button>
+            <button id="changeNameBtn" onclick="openNameModal(false)" class="btn-help">✏️ Change User Name</button>
         </div>
 
         <!-- Status Section -->
@@ -33,9 +34,24 @@
                 <span id="statusText">Server Stopped</span>
             </div>
             <div id="serverInfo" class="server-info hidden">
+                <div class="access-points-header">
+                    <h3>🌐 ACCESS POINTS</h3>
+                </div>
                 <div class="url-section">
-                    <p><strong>📍 Access URL:</strong></p>
-                    <p class="url" id="wifiUrl">http://192.168.x.x:8080</p>
+                    <p class="url" id="dnsUrl">filesharehub.local:9090</p>
+                    <div class="btn-group-row">
+                        <button onclick="copyUrl('dnsUrl')" class="copy-btn-small">📋 Copy</button>
+                        <button onclick="openUrl('dnsUrl')" class="open-btn-small">🌐 Open</button>
+                    </div>
+                    <div class="dns-compat-note">
+                        <div class="compat-text-block">
+                            <span class="compat-line-1">For only Android devices, use the below IP link</span>
+                        </div>
+                        <button class="btn-info-icon" onclick="openDnsInfoModal()" title="Why Local DNS is limited on Android">❓</button>
+                    </div>
+                </div>
+                <div class="url-section">
+                    <p class="url" id="wifiUrl">192.168.x.x:9090</p>
                     <div class="btn-group-row">
                         <button onclick="copyUrl('wifiUrl')" class="copy-btn-small">📋 Copy</button>
                         <button onclick="openUrl('wifiUrl')" class="open-btn-small">🌐 Open</button>
@@ -44,7 +60,7 @@
             </div>
         </div>
 
-        <!-- Toggle 2-Way Transfer (Between Status Card and Select Files) -->
+        <!-- Toggle 2-Way Transfer -->
         <div class="card toggle-card">
             <div class="toggle-container">
                 <div class="toggle-details">
@@ -92,22 +108,29 @@
                     <div class="guide-step">
                         <span class="step-num bg-purple">2</span>
                         <div class="step-content">
-                            <h4>Choose Files</h4>
-                            <p>Tap <span class="highlight-purple">📂 Choose Files</span> to select the files you want to share with others.</p>
+                            <h4>Custom User Name</h4>
+                            <p>Tap <span class="highlight-cyan">✏️ Change User Name</span> to set any custom offline name (e.g. <span class="highlight-purple">immortal.local</span>) for easy access across Windows, Linux and Mac.</p>
                         </div>
                     </div>
                     <div class="guide-step">
                         <span class="step-num bg-purple">3</span>
                         <div class="step-content">
-                            <h4>Start Server</h4>
-                            <p>Press <span class="highlight-green">▶️ Start Server</span> to launch the server. It will display a unique <span class="highlight-cyan">Access URL</span>.</p>
+                            <h4>Choose Files</h4>
+                            <p>Tap <span class="highlight-purple">📂 Choose Files</span> to select the files you want to share with others.</p>
                         </div>
                     </div>
                     <div class="guide-step">
                         <span class="step-num bg-purple">4</span>
                         <div class="step-content">
+                            <h4>Start Server</h4>
+                            <p>Press <span class="highlight-green">▶️ Start Server</span> to launch the server. It will display your custom <span class="highlight-cyan">Access URL</span>.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">5</span>
+                        <div class="step-content">
                             <h4>Client Access</h4>
-                            <p>Have users open the <span class="highlight-cyan">Access URL</span> on their browser. They must be on the <span class="highlight-purple">same local network</span>.</p>
+                            <p>Have users open your link name (e.g. <span class="highlight-cyan">name.local:9090</span>) or IP URL on their browser. They must be on the <span class="highlight-purple">same local network</span>.</p>
                         </div>
                     </div>
                     <div class="guide-step border-highlight">
@@ -121,6 +144,70 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-modal-close" onclick="closeHelpModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DNS Info Modal (Why DNS won't work in Android mobile browsers) -->
+    <div id="dnsInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ℹ️ Local DNS Compatibility</h2>
+                <button class="modal-close-icon" onclick="closeDnsInfoModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="guide-steps">
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">1</span>
+                        <div class="step-content">
+                            <h4>Windows, Mac, Linux &amp; iOS Support</h4>
+                            <p>All these operating systems have built-in <strong>Local DNS / mDNS</strong> support. They resolve offline names like <span class="highlight-cyan">username.local:9090</span> seamlessly without internet.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">2</span>
+                        <div class="step-content">
+                            <h4>Why Android Won't Work with Local DNS</h4>
+                            <p>Android OS does not support Local DNS resolution in mobile browsers (such as Chrome). Android strictly queries public internet DNS servers, so offline domain names cannot be resolved locally on Android.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step border-highlight">
+                        <span class="step-num bg-red">💡</span>
+                        <div class="step-content">
+                            <h4>Solution for Android Devices</h4>
+                            <p>For only Android devices, use the <span class="highlight-cyan">Direct IP link (192.168.x.x:9090)</span> below. It connects directly with zero issues and ultra-fast transfer speeds.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-close" onclick="closeDnsInfoModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change User Name Modal (Centered Overlay Dialog & First-Time Setup) -->
+    <div id="nameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">✏️ Change User Name</h2>
+                <button class="modal-close-icon" id="modalCloseBtn" onclick="closeNameModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalDesc" class="modal-desc">Enter a custom username for your offline link. Peer devices will use this name to access your shared files.</p>
+                <div class="dns-input-container">
+                    <div class="dns-input-group">
+                        <input type="text" id="modalHostnameInput" placeholder="Enter user name" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="updateModalPreview(this.value)">
+                    </div>
+                </div>
+                <div class="dns-status-tip">
+                    <span>Access Point Preview:</span>
+                    <div id="modalDnsPreview" class="url" style="margin-top: 8px; text-align: center;">name.local:9090</div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-dual">
+                <button id="modalCancelBtn" class="btn-modal-cancel" onclick="closeNameModal()">Cancel</button>
+                <button id="modalSaveBtn" class="btn-modal-save" onclick="saveCustomHostname()">💾 Save User Name</button>
             </div>
         </div>
     </div>

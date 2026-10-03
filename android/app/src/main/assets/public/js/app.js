@@ -2,13 +2,18 @@
 let isSharing = false;
 let selectedFiles = [];
 let serverPort = 9090;
-let deviceHostname = 'immortal';
+let deviceHostname = 'filesharehub';
 let pollInterval = null;
 let activeServerPort = 9090;
+let isTwoWayDisabled = false;
+
+// Storage keys
+const STORAGE_KEY = 'bluetooth_share_files';
+const HOSTNAME_STORAGE_KEY = 'custom_dns_hostname';
+const SETUP_DONE_KEY = 'custom_dns_setup_done';
 
 // Check if device has local network (doesn't need internet)
 function checkLocalNetwork() {
-    // We don't care about internet, just need local WiFi
     addLog('📶 Checking local network...');
     
     if (!window.AndroidBridge) {
@@ -19,10 +24,6 @@ function checkLocalNetwork() {
     addLog('✅ Local network ready (no internet required)');
     return true;
 }
-
-
-// Storage key
-const STORAGE_KEY = 'bluetooth_share_files';
 
 // File picker promise resolver
 let filePickerResolve = null;
@@ -50,8 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeApp() {
+    loadDeviceHostname();
     addLog('App initialized');
-    addLog('Device: ' + deviceHostname);
     
     if (!window.Capacitor || window.Capacitor.getPlatform() !== 'android') {
         addLog('⚠️ This app only works on Android');
@@ -68,7 +69,42 @@ async function initializeApp() {
     }
     
     addLog('✅ Native bridge ready');
+    loadDeviceHostname();
+    addLog('DNS Hostname: ' + deviceHostname);
     await loadStoredFiles();
+    
+    // Initialize UI controls
+    const toggle = document.getElementById('disableTwoWayToggle');
+    if (toggle) {
+        toggle.checked = false;
+    }
+    isTwoWayDisabled = false;
+
+    // First time setup check (prompt on first launch only)
+    const isFirstTime = !localStorage.getItem(SETUP_DONE_KEY);
+    if (isFirstTime) {
+        setTimeout(() => {
+            openNameModal(true);
+        }, 300);
+    }
+}
+
+// Resolve device hostname dynamically
+function loadDeviceHostname() {
+    try {
+        let stored = localStorage.getItem(HOSTNAME_STORAGE_KEY);
+        if (stored && stored.trim()) {
+            deviceHostname = stored.trim().replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+        } else {
+            deviceHostname = 'filesharehub';
+        }
+    } catch (e) {
+        deviceHostname = 'filesharehub';
+    }
+    const currentNameEl = document.getElementById('currentNameDisplay');
+    if (currentNameEl) {
+        currentNameEl.textContent = deviceHostname;
+    }
 }
 
 // Load stored files
@@ -223,6 +259,17 @@ function deleteFile(index) {
                 console.error('Dynamic unregister failed:', err);
             }
         }
+        
+        // Auto-enable two-way transfer if no files left to share
+        if (isTwoWayDisabled && selectedFiles.length === 0) {
+            isTwoWayDisabled = false;
+            const toggle = document.getElementById('disableTwoWayToggle');
+            if (toggle) toggle.checked = false;
+            if (window.AndroidBridge && window.AndroidBridge.setTwoWayTransferDisabled) {
+                window.AndroidBridge.setTwoWayTransferDisabled(false);
+            }
+            addLog("🔓 Two-way transfer auto-enabled because no files are left to share.");
+        }
     }
 }
 
@@ -250,21 +297,30 @@ async function startSharing() {
         
         isSharing = true;
         updateUI(true);
-        addLog('🚀 Starting HTTP server (offline mode)...');
-        addLog('🚀 Starting HTTP server...');
+        addLog('🚀 Starting HTTP & Offline DNS server...');
         
-        // Start server
-        const serverResult = window.AndroidBridge.startServer(serverPort);
+        // Start server with custom DNS hostname
+        const serverResult = window.AndroidBridge.startServer(serverPort, deviceHostname);
         const result = JSON.parse(serverResult);
         
         if (!result.success) {
             throw new Error(result.error || 'Failed to start server');
         }
         
+        // Push current Two-Way Disabled state to native server
+        if (window.AndroidBridge && window.AndroidBridge.setTwoWayTransferDisabled) {
+            window.AndroidBridge.setTwoWayTransferDisabled(isTwoWayDisabled);
+        }
+        
         const ipAddress = result.ip;
         const actualPort = result.port || serverPort;
         activeServerPort = actualPort;
+        const effectiveHost = result.hostname || deviceHostname;
+        const dnsUrl = `${effectiveHost}.local:${actualPort}`;
+        const wifiUrl = `${ipAddress}:${actualPort}`;
+        
         addLog('✅ Server started at ' + ipAddress + ':' + actualPort);
+        addLog('🌐 Link Ready: ' + dnsUrl);
         
         // Register files
         let registered = 0;
@@ -289,13 +345,17 @@ async function startSharing() {
         
         addLog(`✅ Registered ${registered}/${selectedFiles.length} files`);
         
-        const wifiUrl = `http://${ipAddress}:${actualPort}`;
-
-        document.getElementById('wifiUrl').textContent = wifiUrl;
+        // Update URL Displays
+        const dnsUrlEl = document.getElementById('dnsUrl');
+        if (dnsUrlEl) dnsUrlEl.textContent = dnsUrl;
+        
+        const wifiUrlEl = document.getElementById('wifiUrl');
+        if (wifiUrlEl) wifiUrlEl.textContent = wifiUrl;
+        
         document.getElementById('serverInfo').classList.remove('hidden');
 
-        addLog('📱 Access URL: ' + wifiUrl);
-        addLog('✅ Copy this URL to access files');
+        addLog('📱 Hostname URL: ' + dnsUrl);
+        addLog('📍 Direct IP URL: ' + wifiUrl);
         
         // Start foreground service
         if (window.AndroidBridge.startForegroundService) {
@@ -336,6 +396,16 @@ async function stopSharing() {
         saveFiles();
         updateFileList();
         
+        // Reset Two-way transfer disabled status on stop sharing
+        isTwoWayDisabled = false;
+        const toggle = document.getElementById('disableTwoWayToggle');
+        if (toggle) {
+            toggle.checked = false;
+        }
+        if (window.AndroidBridge && window.AndroidBridge.setTwoWayTransferDisabled) {
+            window.AndroidBridge.setTwoWayTransferDisabled(false);
+        }
+        
         addLog('✅ Stopped');
         
     } catch (error) {
@@ -349,17 +419,20 @@ function updateUI(isRunning) {
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const changeNameBtn = document.getElementById('changeNameBtn');
     
     if (isRunning) {
         statusDot.className = 'status-dot running';
         statusText.textContent = 'Sharing Active';
         startBtn.classList.add('hidden');
         stopBtn.classList.remove('hidden');
+        if (changeNameBtn) changeNameBtn.classList.add('hidden');
     } else {
         statusDot.className = 'status-dot stopped';
         statusText.textContent = 'Stopped';
         startBtn.classList.remove('hidden');
         stopBtn.classList.add('hidden');
+        if (changeNameBtn) changeNameBtn.classList.remove('hidden');
         document.getElementById('serverInfo').classList.add('hidden');
     }
 }
@@ -367,27 +440,29 @@ function updateUI(isRunning) {
 // Copy URL
 function copyUrl(elementId) {
     const id = elementId || 'wifiUrl';
-    const url = document.getElementById(id).textContent;
+    const text = document.getElementById(id).textContent.trim();
+    const copyText = text.startsWith('http://') || text.startsWith('https://') ? text : `http://${text}`;
     
     if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('✅ Copied: ' + url);
+        navigator.clipboard.writeText(copyText).then(() => {
+            alert('✅ Copied: ' + copyText);
         });
     } else {
         const textarea = document.createElement('textarea');
-        textarea.value = url;
+        textarea.value = copyText;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        alert('✅ Copied: ' + url);
+        alert('✅ Copied: ' + copyText);
     }
 }
 
 // Open URL
 function openUrl(elementId) {
     const id = elementId || 'wifiUrl';
-    const url = document.getElementById(id).textContent;
+    const text = document.getElementById(id).textContent.trim();
+    const url = text.startsWith('http://') || text.startsWith('https://') ? text : `http://${text}`;
     
     if (window.AndroidBridge && window.AndroidBridge.openBrowser) {
         window.AndroidBridge.openBrowser(url);
@@ -421,14 +496,200 @@ async function syncFilesWithServer() {
         const res = await fetch(`http://127.0.0.1:${activeServerPort}/api/peers`);
         const data = await res.json();
         if (data && data.files) {
-            selectedFiles = data.files.map(f => ({
+            const newFiles = data.files.map(f => ({
                 name: f.name,
                 path: f.path,
                 size: f.size
             }));
-            updateFileList();
+            
+            const isChanged = newFiles.length !== selectedFiles.length || 
+                              newFiles.some((f, idx) => !selectedFiles[idx] || f.name !== selectedFiles[idx].name || f.size !== selectedFiles[idx].size);
+            
+            if (isChanged) {
+                selectedFiles = newFiles;
+                updateFileList();
+            }
+            
+            // Auto-enable two-way transfer if no files left to share
+            if (isTwoWayDisabled && selectedFiles.length === 0) {
+                isTwoWayDisabled = false;
+                const toggle = document.getElementById('disableTwoWayToggle');
+                if (toggle) toggle.checked = false;
+                if (window.AndroidBridge && window.AndroidBridge.setTwoWayTransferDisabled) {
+                    window.AndroidBridge.setTwoWayTransferDisabled(false);
+                }
+                addLog("🔓 Two-way transfer auto-enabled because no files are left to share.");
+            }
         }
     } catch (e) {
-        console.error('Error syncing files with server:', e);
+        // silent
     }
 }
+
+// Toggle Two-Way Transfer
+function toggleTwoWayTransfer() {
+    const toggle = document.getElementById('disableTwoWayToggle');
+    if (toggle) {
+        if (toggle.checked && selectedFiles.length === 0) {
+            alert("Please upload at least one file before turning that on, as the server is of no use if no one can upload data and there is no data to receive.");
+            toggle.checked = false;
+            isTwoWayDisabled = false;
+            return;
+        }
+        isTwoWayDisabled = toggle.checked;
+        addLog(`🔒 Two-way transfer disabled status: ${isTwoWayDisabled}`);
+        
+        if (window.AndroidBridge && window.AndroidBridge.setTwoWayTransferDisabled) {
+            window.AndroidBridge.setTwoWayTransferDisabled(isTwoWayDisabled);
+        }
+    }
+}
+
+// Help Modal controls
+function openHelpModal() {
+    const modal = document.getElementById('helpModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeHelpModal() {
+    const modal = document.getElementById('helpModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// Change User Name Modal controls (supports first-time setup and manual change)
+function openNameModal(isFirstTime = false) {
+    loadDeviceHostname();
+    const input = document.getElementById('modalHostnameInput');
+    
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDesc = document.getElementById('modalDesc');
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    const closeBtn = document.getElementById('modalCloseBtn');
+    const saveBtn = document.getElementById('modalSaveBtn');
+    const modalFooter = document.querySelector('#nameModal .modal-footer');
+    
+    if (isFirstTime) {
+        if (input) {
+            input.value = '';
+            input.placeholder = 'Enter user name';
+        }
+        updateModalPreview('');
+        if (modalTitle) modalTitle.textContent = '🚀 Welcome! Set User Name';
+        if (modalDesc) modalDesc.textContent = 'Choose a custom username for your offline file sharing. Other devices will use this name to connect and download your files.';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (closeBtn) closeBtn.style.display = 'none';
+        if (saveBtn) {
+            saveBtn.textContent = '💾 Save & Continue';
+            saveBtn.style.margin = '0 auto';
+        }
+        if (modalFooter) {
+            modalFooter.style.justifyContent = 'center';
+        }
+    } else {
+        if (input) {
+            input.value = deviceHostname;
+            input.placeholder = 'Enter user name';
+        }
+        updateModalPreview(deviceHostname);
+        if (modalTitle) modalTitle.textContent = '✏️ Change User Name';
+        if (modalDesc) modalDesc.textContent = 'Enter a custom username for your offline link. Peer devices will use this name to access your shared files.';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+        if (closeBtn) closeBtn.style.display = 'inline-block';
+        if (saveBtn) {
+            saveBtn.textContent = '💾 Save User Name';
+            saveBtn.style.margin = '';
+        }
+        if (modalFooter) {
+            modalFooter.style.justifyContent = 'flex-end';
+        }
+    }
+    
+    const modal = document.getElementById('nameModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeNameModal() {
+    const modal = document.getElementById('nameModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    if (!localStorage.getItem(SETUP_DONE_KEY)) {
+        localStorage.setItem(SETUP_DONE_KEY, 'true');
+    }
+}
+
+function updateModalPreview(val) {
+    const clean = (val || '').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    const preview = document.getElementById('modalDnsPreview');
+    if (preview) {
+        preview.textContent = `${clean || 'name'}.local:${activeServerPort}`;
+    }
+}
+
+function saveCustomHostname() {
+    const input = document.getElementById('modalHostnameInput');
+    let val = input ? input.value : '';
+    let clean = val.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    if (!clean) {
+        clean = 'filesharehub';
+    }
+    deviceHostname = clean;
+    localStorage.setItem(HOSTNAME_STORAGE_KEY, deviceHostname);
+    localStorage.setItem(SETUP_DONE_KEY, 'true');
+    const currentNameEl = document.getElementById('currentNameDisplay');
+    if (currentNameEl) {
+        currentNameEl.textContent = deviceHostname;
+    }
+    closeNameModal();
+    addLog('👤 User Name updated: ' + deviceHostname);
+}
+
+// DNS Info Modal controls (Why DNS is limited on Android)
+function openDnsInfoModal() {
+    const modal = document.getElementById('dnsInfoModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeDnsInfoModal() {
+    const modal = document.getElementById('dnsInfoModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// Global Back Button Handler (for hardware back button)
+window.handleAppBack = function() {
+    const modals = ['dnsInfoModal', 'nameModal', 'helpModal'];
+    for (const id of modals) {
+        const el = document.getElementById(id);
+        if (el && el.classList.contains('show')) {
+            el.classList.remove('show');
+            return true; // handled, don't exit app
+        }
+    }
+    return false; // no modal open, allow normal back behavior
+};
+
+// Close modals when clicking outside
+document.addEventListener('click', function(event) {
+    const helpModal = document.getElementById('helpModal');
+    if (helpModal && event.target === helpModal) {
+        closeHelpModal();
+    }
+    const nameModal = document.getElementById('nameModal');
+    if (nameModal && event.target === nameModal) {
+        closeNameModal();
+    }
+    const dnsInfoModal = document.getElementById('dnsInfoModal');
+    if (dnsInfoModal && event.target === dnsInfoModal) {
+        closeDnsInfoModal();
+    }
+});
