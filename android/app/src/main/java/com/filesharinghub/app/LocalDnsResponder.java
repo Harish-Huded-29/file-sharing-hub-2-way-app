@@ -19,7 +19,7 @@ public class LocalDnsResponder {
     private final Context context;
     private volatile String hostname = "filesharehub";
     private volatile String previousHostname = null;
-    private volatile int httpPort = 9090;
+    private volatile int httpPort = 8080;
     private volatile String localIpAddress = null;
     private volatile boolean isRunning = false;
 

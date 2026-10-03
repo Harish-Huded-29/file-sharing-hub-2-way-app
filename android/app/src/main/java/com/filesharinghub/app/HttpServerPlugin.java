@@ -80,7 +80,7 @@ public class HttpServerPlugin extends Plugin {
             // Prevent using system/preassigned ports (0 - 1023)
             int activePort = port;
             if (activePort < 1024) {
-                activePort = 9090;
+                activePort = 8080;
             }
             
             while (activePort <= 65535) {

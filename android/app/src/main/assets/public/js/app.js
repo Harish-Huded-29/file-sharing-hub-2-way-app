@@ -1,10 +1,10 @@
 // Global variables
 let isSharing = false;
 let selectedFiles = [];
-let serverPort = 9090;
+let serverPort = 8080;
 let deviceHostname = 'filesharehub';
 let pollInterval = null;
-let activeServerPort = 9090;
+let activeServerPort = 8080;
 let isTwoWayDisabled = false;
 
 // Storage keys
