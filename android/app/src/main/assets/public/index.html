@@ -167,6 +167,13 @@
                     <div class="guide-step">
                         <span class="step-num bg-purple">2</span>
                         <div class="step-content">
+                            <h4>Linux Troubleshooting</h4>
+                            <p>Linux supports <strong>.local</strong> domains via <strong>Avahi</strong> and <strong>systemd-resolved</strong>. If your Linux distribution has mDNS disabled on your network interface or firewall active, run <code>sudo resolvectl mdns &lt;iface&gt; yes</code> or <code>sudo ufw allow 5353/udp</code>, or use the Direct IP link below.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <span class="step-num bg-purple">3</span>
+                        <div class="step-content">
                             <h4>Why Android Won't Work with Local DNS</h4>
                             <p>Android OS does not support Local DNS resolution in mobile browsers (such as Chrome). Android strictly queries public internet DNS servers, so offline domain names cannot be resolved locally on Android.</p>
                         </div>
